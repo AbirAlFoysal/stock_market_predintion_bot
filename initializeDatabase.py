@@ -1,5 +1,5 @@
 import requests
-from bs4 import BeautifulSoup
+# from bs4 import BeautifulSoup
 import time, subprocess
 import json, time, os,sys, inspect, ast, csv
 from rich import print_json
