@@ -12,15 +12,20 @@ data = []
 for filename in tqdm(os.listdir(directory), desc="Processing CSV files"):
     if filename.endswith('.csv'):
         # Read the CSV file
-        df = pd.read_csv(os.path.join(directory, filename))
+        file_path = os.path.join(directory, filename)
+        df = pd.read_csv(file_path)
 
-        # Check if 'timestamp' column exists and is not empty
-        if 'timestamp' in df.columns and not df['timestamp'].empty:
-            # Get the last value of the "timestamp" column
-            last_timestamp = df['timestamp'].iloc[-1]
+        # Check if 'timestamp' column exists
+        if 'timestamp' in df.columns:
+            # Drop any NaN values and take the last non-empty value in the "timestamp" column
+            last_timestamp = df['timestamp'].dropna().iloc[-1] if not df['timestamp'].dropna().empty else ''
 
-            # Append the file information to the list
-            data.append({'share': filename.replace(".csv",""), 'db': last_timestamp, 'model': ''})
+        else:
+            # If 'timestamp' column is missing, set last_timestamp to an empty string
+            last_timestamp = ''
+        
+        # Append the file information to the list, keeping "db" column empty if last_timestamp is empty
+        data.append({'share': filename.replace(".csv", ""), 'db': last_timestamp, 'model': ''})
 
 # Create a new DataFrame
 inquiry_df = pd.DataFrame(data, columns=['share', 'db', 'model'])

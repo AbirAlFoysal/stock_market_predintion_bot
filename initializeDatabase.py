@@ -101,18 +101,18 @@ def amar_stock_api():
         try:
             with open(f"./DB_csv/unadjusted_amarstock/{stock}.csv", 'w') as csvfile:
                 # Adjust the order of fieldnames to match the desired sequence
-                writer = csv.DictWriter(csvfile, fieldnames=["timestamp", "opening", "high", "low", "closing", "adj_close", "volume"])
+                writer = csv.DictWriter(csvfile, fieldnames=["timestamp", "opening", "high", "low", "close", "adj_close", "volume"])
                 writer.writeheader()
                 data = all_data[stock]
                 for i in range(len(data['t'])):
-                    readable_time = datetime.fromtimestamp(data['t'][i]).strftime('%Y-%m-%d %H:%M:%S')
+                    readable_time = datetime.fromtimestamp(data['t'][i]).strftime('%Y-%m-%d')
                     writer.writerow({
                         'timestamp': readable_time,
                         'opening': data['o'][i],
                         'high': data['h'][i],
                         'low': data['l'][i],
-                        'closing': data['c'][i],
-                        'adj_close': data['c'][i],  # 'adj_close' is the same as 'closing'
+                        'close': data['c'][i],
+                        'adj_close': data['c'][i],  # 'adj_close' is the same as 'close'
                         'volume': data['v'][i]
                     })
             print(f"File written:", Fore.MAGENTA + f"{stock}.csv")
@@ -185,12 +185,12 @@ def stock_now_api():
 
     for s in all_data:
         with open(f"./DB_csv/unadjusted_stocknow_from_2019_to_2023/{s}.csv", 'w') as csvfile:
-            writer = csv.DictWriter(csvfile, fieldnames=["timestamp", "closing", "opening", "high", "low", "volume"])
+            writer = csv.DictWriter(csvfile, fieldnames=["timestamp", "close", "opening", "high", "low", "volume"])
             writer.writeheader()
             data = all_data[s]
             for i in range(len(data['t'])):
                 readable_time = datetime.fromtimestamp(data['t'][i]).strftime('%Y-%m-%d %H:%M:%S')
-                writer.writerow({'timestamp': readable_time, 'closing': data['c'][i], 'opening': data['o'][i], 'high': data['h'][i], 'low': data['l'][i], 'volume': data['v'][i]})
+                writer.writerow({'timestamp': readable_time, 'close': data['c'][i], 'opening': data['o'][i], 'high': data['h'][i], 'low': data['l'][i], 'volume': data['v'][i]})
 
 
 
