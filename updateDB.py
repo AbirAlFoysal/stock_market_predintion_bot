@@ -56,35 +56,25 @@ def delete_csv_file(file_path):
     except Exception as e:
         print(f"An error occurred: {e}")
 
-# Example usage:
-# delete_csv_file("path_to_your_file.csv")
 
 import os
 import pandas as pd
 
 def append_or_create_csv(file1, file2):
-    # Check if the first file exists
     if os.path.exists(file1):
-        # Load the first file into a DataFrame
         df1 = pd.read_csv(file1)
         
-        # Load the second file into a DataFrame
         df2 = pd.read_csv(file2)
         
-        # Append the second file to the first file
         combined_df = pd.concat([df1, df2], ignore_index=True)
         
-        # Save the combined DataFrame back to the first file
         combined_df.to_csv(file1, index=False)
         print(f"Appended '{file2}' to '{file1}' successfully.")
     else:
-        # If the first file does not exist, copy the second file as the first file
         df2 = pd.read_csv(file2)
         df2.to_csv(file1, index=False)
         print(f"'{file1}' not found. Copied '{file2}' as '{file1}'.")
 
-# Example usage:
-# append_or_create_csv("file1.csv", "file2.csv")
 
 
 
@@ -95,30 +85,21 @@ def generate_time(stock):
     global from_, to
     
     if from_ is None:
-        # Get the last date from the "db" column of "inquiry.csv"
         from_str = get_value_from_csv(stock, "db")
         if from_str:
-            # Convert the string to a datetime object and then to a timestamp
             from_ = convert_date_to_datetime(from_str).timestamp()
         else:
-            # Fallback to a default date if no previous date is found
             default_date = '2023-08-01'
             from_ = convert_date_to_datetime(default_date).timestamp()
-        # Set 'to' as today's date
         to = datetime.now().timestamp()
     else:
-        # Convert 'from_' timestamp to a datetime object
         fromn = datetime.fromtimestamp(from_)
         
-        # Determine the new 'from_' date based on the month
         if fromn.month == 2:
-            # If the month is February, set 'from_' to August 1st of the previous year
             from_ = datetime.strptime(f"{fromn.year - 1}-08-01", '%Y-%m-%d').timestamp()
         else:
-            # Otherwise, set 'from_' to February 1st of the current year
             from_ = datetime.strptime(f"{fromn.year}-02-01", '%Y-%m-%d').timestamp()
         
-        # Set 'to' as the previous 'from_' value
         to = from_
 
 

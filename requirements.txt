@@ -1,13 +1,19 @@
+blinker==1.8.2
 certifi==2024.7.4
 charset-normalizer==3.3.2
+click==8.1.7
 colorama==0.4.6
 contourpy==1.2.1
 cycler==0.12.1
+Flask==3.0.3
 fonttools==4.53.1
 idna==3.8
+itsdangerous==2.2.0
+Jinja2==3.1.4
 joblib==1.4.2
 kiwisolver==1.4.5
 markdown-it-py==3.0.0
+MarkupSafe==2.1.5
 matplotlib==3.9.2
 mdurl==0.1.2
 numpy==2.1.0
@@ -27,3 +33,4 @@ threadpoolctl==3.5.0
 tqdm==4.66.5
 tzdata==2024.1
 urllib3==2.2.2
+Werkzeug==3.0.4

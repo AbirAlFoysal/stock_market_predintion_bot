@@ -5,7 +5,6 @@ import json
 
 app = Flask(__name__)
 
-# Load the inquiry.csv file
 df_inquiry = pd.read_csv('inquiry.csv')
 
 @app.route('/')
@@ -20,17 +19,12 @@ def predict():
         sample_file = request.form['share']
         days = int(request.form['days'])
 
-        # Call the prediction function
         predictions_json = load_model_and_predict(sample_file, days)
 
-        # Convert JSON string to Python dictionary
         predictions_dict = json.loads(predictions_json)
 
-        # Extract dates and values
         dates = list(predictions_dict.keys())
         values = list(predictions_dict.values())
-
-        # Return a JSON response with dates and values
         return jsonify({'dates': dates, 'values': values})
 
     except Exception as e:

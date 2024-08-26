@@ -22,8 +22,8 @@
 
         .results-container {
             width: 48%;
-            max-height: 400px; /* Set the max height for the table container */
-            overflow-y: auto; /* Enable vertical scrolling */
+            max-height: 400px; 
+            overflow-y: auto; 
         }
 
         #predictionChart {
@@ -111,12 +111,10 @@
 
                 const ctx = document.getElementById('predictionChart').getContext('2d');
 
-                // Destroy existing chart instance if it exists
                 if (predictionChart) {
                     predictionChart.destroy();
                 }
 
-                // Create a new chart
                 predictionChart = new Chart(ctx, {
                     type: 'line',
                     data: {
