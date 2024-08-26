@@ -1,25 +1,70 @@
-import pandas as pd
 import os
+import numpy as np
+import pandas as pd
+import joblib
+from sklearn.ensemble import GradientBoostingRegressor
+from sklearn.metrics import mean_squared_error as MSE, r2_score
+from sklearn.model_selection import train_test_split
 
-def append_or_create_csv(file1, file2):
-    # Check if the first file exists
-    if os.path.exists(file1):
-        # Load the first file into a DataFrame
-        df1 = pd.read_csv(file1)
-        
-        # Load the second file into a DataFrame
-        df2 = pd.read_csv(file2)
-        
-        # Append the second file to the first file
-        combined_df = pd.concat([df1, df2], ignore_index=True)
-        
-        # Save the combined DataFrame back to the first file
-        combined_df.to_csv(file1, index=False)
-        print(f"Appended '{file2}' to '{file1}' successfully.")
-    else:
-        # If the first file does not exist, copy the second file as the first file
-        df2 = pd.read_csv(file2)
-        df2.to_csv(file1, index=False)
-        print(f"'{file1}' not found. Copied '{file2}' as '{file1}'.")
+def predict_future_prices(days=7):
+    # Directory containing the CSV files
+    csv_directory = r'D:\AbleAid\StockPradiction\DB_csv\unadjusted_amarstock'
+    model_directory = r'D:\AbleAid\StockPradiction\models'
 
-append_or_create_csv(r"C:\Users\abcwets\Desktop\codes\stock_market_predintion_bot\DB_csv_full\unadjusted_amarstock\1JANATAMF.csv",r"C:\Users\abcwets\Desktop\codes\stock_market_predintion_bot\DB_csv\unadjusted_amarstock\1JANATAMF.csv")
+    # Ensure model directory exists
+    if not os.path.exists(model_directory):
+        os.makedirs(model_directory)
+
+    # Select a sample CSV file to train and predict
+    sample_file = 'ACI.csv'  # Replace with your actual file
+    file_path = os.path.join(csv_directory, sample_file)
+
+    df = pd.read_csv(file_path)
+
+    # Prepare the dataset
+    df['timestamp'] = pd.to_datetime(df['timestamp'])
+    df['day_of_year'] = df['timestamp'].dt.dayofyear
+    df['year'] = df['timestamp'].dt.year
+
+    # Feature and target selection
+    X = df[['opening', 'high', 'low', 'volume', 'day_of_year', 'year']].values
+    Y = df['adj_close'].values
+
+    # Split the data into training and testing sets
+    X_train, X_test, Y_train, Y_test = train_test_split(X, Y, test_size=0.2, random_state=42)
+
+    # Train the model
+    gb = GradientBoostingRegressor(max_depth=4, n_estimators=200, random_state=2)
+    gb.fit(X_train, Y_train)
+
+    # Predict and calculate RMSE on test data
+    y_pred_test = gb.predict(X_test)
+    test_rmse = MSE(Y_test, y_pred_test) ** 0.5
+    accuracy = r2_score(Y_test, y_pred_test)
+
+    # Predict the adj_close for the next 'days' days
+    last_known_day = df['day_of_year'].iloc[-1]
+    last_known_year = df['year'].iloc[-1]
+
+    future_predictions = []
+    for day in range(1, days + 1):
+        next_day_of_year = (last_known_day + day) % 365
+        next_year = last_known_year + (last_known_day + day) // 365
+
+        # Use the last known values of opening, high, low, volume for predictions
+        last_row = df.iloc[-1][['opening', 'high', 'low', 'volume']].values
+        prediction = gb.predict([np.append(last_row, [next_day_of_year, next_year])])
+        future_predictions.append(prediction[0])
+
+    # Print the predicted values
+    print(f"Predicted adj_close prices for the next {days} days:")
+    for i, prediction in enumerate(future_predictions, start=1):
+        print(f"Day {i}: {prediction:.2f}")
+
+    print(f"\nTest RMSE: {test_rmse}")
+    print(f"Accuracy (R2 Score): {accuracy * 100:.2f}%")
+
+    return future_predictions
+
+# Example usage:
+predictions = predict_future_prices(days=70)

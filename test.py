@@ -182,7 +182,7 @@ def amar_stock_api():
         load_inquiry.loc[load_inquiry['share'] == stock, "model"] = from_
         load_inquiry.loc[load_inquiry['share'] == stock, "db"] = from_
         append_or_create_csv( f"./DB_csv/unadjusted_amarstock/{stock}.csv",f"./DB_csv/temp_DB/{stock}.csv")
-        retrain_model(f"./DB_csv/unadjusted_amarstock/{stock}.csv",f"allmodels/{stock}.pkl")
+        retrain_model(stock)
 
         delete_csv_file(f"./DB_csv/temp_DB/{stock}.csv")
 

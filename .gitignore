@@ -3,3 +3,4 @@ DB_csv
 DB_csv_full
 allmodels
 testDB 
+./__pycache__

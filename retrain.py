@@ -1,49 +1,78 @@
-import os
-import numpy as np
 import pandas as pd
-import joblib
+import pickle
+import os
+from sklearn.model_selection import train_test_split
 from sklearn.ensemble import GradientBoostingRegressor
-from sklearn.metrics import mean_squared_error as MSE
 
-def retrain_model(csv_file, model_file):
-    # Load the CSV file
-    df = pd.read_csv(csv_file)
 
-    # Only proceed if the file has more than 2 rows
-    if len(df) > 2:
-        # Check if the required columns exist
-        if all(col in df.columns for col in ['volume', 'opening', 'high', 'low', 'adj_close']):
-            # Prepare the dataset
-            df['Increase_Decrease'] = np.where(df['volume'].shift(-1) > df['volume'], 1, 0)
-            df['Buy_Sell_on_Open'] = np.where(df['opening'].shift(-1) > df['opening'], 1, 0)
-            df['Buy_Sell'] = np.where(df['adj_close'].shift(-1) > df['adj_close'], 1, 0)
-            df['Returns'] = df['adj_close'].pct_change()
-            df = df.dropna()
+def retrain_model(sample_file):
+    try:
+        csv_directory = "./DB_csv/unadjusted_amarstock/"
+        model_directory = "allmodels"
+        sample_file = str(sample_file) + ".csv"
 
-            X = df[['opening', 'high', 'low', 'volume']].values
-            Y = df['adj_close'].values
+        # Ensure model directory exists
+        if not os.path.exists(model_directory):
+            os.makedirs(model_directory)
 
-            # Train the model using the entire dataset
-            gb = GradientBoostingRegressor(max_depth=4, n_estimators=200, random_state=2)
-            gb.fit(X, Y)
+        # Load the data
+        file_path = os.path.join(csv_directory, sample_file)
+        
+        if not os.path.exists(file_path):
+            raise FileNotFoundError(f"CSV file '{file_path}' not found.")
 
-            # Predict using the trained model
-            y_pred = gb.predict(X)
+        df = pd.read_csv(file_path)
 
-            # Compute RMSE
-            mse = MSE(Y, y_pred)
-            rmse = mse ** 0.5
+        # Prepare the dataset
+        df['timestamp'] = pd.to_datetime(df['timestamp'])
+        df['day_of_year'] = df['timestamp'].dt.dayofyear
+        df['year'] = df['timestamp'].dt.year
 
-            # Delete the previous model if it exists
-            if os.path.exists(model_file):
+        # Create lag features
+        df['lag1'] = df['adj_close'].shift(1)
+        df['lag2'] = df['adj_close'].shift(2)
+        df['rolling_mean'] = df['adj_close'].rolling(window=5).mean()
+        df['rolling_std'] = df['adj_close'].rolling(window=5).std()
+
+        # Drop rows with NaN values
+        df = df.dropna()
+
+        # Feature and target selection
+        X = df[['opening', 'high', 'low', 'volume', 'day_of_year', 'year', 'lag1', 'lag2', 'rolling_mean', 'rolling_std']].values
+        Y = df['adj_close'].values
+
+        # Split the data into training and testing sets
+        X_train, X_test, Y_train, Y_test = train_test_split(X, Y, test_size=0.2, random_state=42)
+
+        # Train the model
+        gb = GradientBoostingRegressor(max_depth=4, n_estimators=200, random_state=2)
+        gb.fit(X_train, Y_train)
+
+        # Define the model file path
+        model_file = os.path.join(model_directory, sample_file.replace('.csv', '.pkl'))
+
+        # Check if the model file already exists and delete it if it does
+        if os.path.exists(model_file):
+            try:
                 os.remove(model_file)
+                print(f"Existing model {model_file} deleted.")
+            except Exception as e:
+                raise RuntimeError(f"Error deleting the existing model file: {e}")
 
-            # Save the new model
-            joblib.dump(gb, model_file)
+        # Save the trained model as a .pkl file
+        try:
+            with open(model_file, 'wb') as f:
+                pickle.dump(gb, f)
+            print(f"New model saved to {model_file}")
+        except Exception as e:
+            raise RuntimeError(f"Error saving the model: {e}")
 
-            print(f"Model trained and saved as {model_file}. RMSE: {rmse:.4f}")
+    except FileNotFoundError as fnf_error:
+        print(fnf_error)
+    except pd.errors.EmptyDataError as ede_error:
+        print(f"CSV file is empty or malformed: {ede_error}")
+    except Exception as e:
+        print(f"An unexpected error occurred: {e}")
 
 # Example usage:
-# csv_file = r'D:\AbleAid\StockPradiction\DB_csv\unadjusted_amarstock\example.csv'
-# model_file = r'D:\AbleAid\StockPradiction\models\example.pkl'
-# train_and_replace_model(csv_file, model_file)
+# retrain_model('ACI')

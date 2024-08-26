@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Stock Prediction</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+        }
+
+        .container {
+            display: flex;
+            flex-direction: row;
+            justify-content: space-between;
+        }
+
+        .chart-container {
+            width: 48%;
+        }
+
+        .results-container {
+            width: 48%;
+            max-height: 400px; /* Set the max height for the table container */
+            overflow-y: auto; /* Enable vertical scrolling */
+        }
+
+        #predictionChart {
+            max-width: 100%;
+            height: auto;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        table, th, td {
+            border: 1px solid black;
+        }
+
+        th, td {
+            padding: 8px;
+            text-align: center;
+        }
+
+        th {
+            background-color: #f2f2f2;
+        }
+    </style>
+</head>
+<body>
+    <h1>Stock Prediction</h1>
+    <form id="predictForm" method="POST">
+        <label for="share">Select Share:</label>
+        <select name="share" id="share">
+            {% for share in shares %}
+            <option value="{{ share }}">{{ share }}</option>
+            {% endfor %}
+        </select>
+        <br>
+        <label for="days">Select Days:</label>
+        <select name="days" id="days">
+            {% for day in days_options %}
+            <option value="{{ day }}">{{ day }}</option>
+            {% endfor %}
+        </select>
+        <br>
+        <button type="submit">Predict</button>
+    </form>
+
+    <div class="container">
+        <div class="chart-container">
+            <h2>Prediction Graph</h2>
+            <canvas id="predictionChart"></canvas>
+        </div>
+
+        <div class="results-container">
+            <h2>Prediction Results</h2>
+            <table id="resultsTable">
+                <thead>
+                    <tr>
+                        <th>Date</th>
+                        <th>Adj Close Value</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <!-- Table rows will be inserted here -->
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <script>
+        let predictionChart;
+
+        document.getElementById('predictForm').addEventListener('submit', function(event) {
+            event.preventDefault();
+            const formData = new FormData(event.target);
+            fetch('/predict', {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.error) {
+                    alert(`Error: ${data.error}`);
+                    return;
+                }
+
+                const ctx = document.getElementById('predictionChart').getContext('2d');
+
+                // Destroy existing chart instance if it exists
+                if (predictionChart) {
+                    predictionChart.destroy();
+                }
+
+                // Create a new chart
+                predictionChart = new Chart(ctx, {
+                    type: 'line',
+                    data: {
+                        labels: data.dates,
+                        datasets: [{
+                            label: 'Predicted Adj Close',
+                            data: data.values,
+                            borderColor: 'rgba(75, 192, 192, 1)',
+                            borderWidth: 2,
+                            fill: false
+                        }]
+                    },
+                    options: {
+                        scales: {
+                            x: {
+                                title: {
+                                    display: true,
+                                    text: 'Date'
+                                }
+                            },
+                            y: {
+                                title: {
+                                    display: true,
+                                    text: 'Adj Close Value'
+                                }
+                            }
+                        }
+                    }
+                });
+
+                // Populate the results table
+                const resultsTable = document.getElementById('resultsTable').getElementsByTagName('tbody')[0];
+                resultsTable.innerHTML = ''; // Clear previous results
+                for (let i = 0; i < data.dates.length; i++) {
+                    const row = resultsTable.insertRow();
+                    const cellDate = row.insertCell(0);
+                    const cellValue = row.insertCell(1);
+                    cellDate.textContent = data.dates[i];
+                    cellValue.textContent = data.values[i].toFixed(2); // format to 2 decimal places
+                }
+            })
+            .catch(error => console.error('Error:', error));
+        });
+    </script>
+</body>
+</html>
