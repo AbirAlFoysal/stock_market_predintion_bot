@@ -1,84 +1,67 @@
-import pickle
-import pandas as pd
 import numpy as np
-import os
+import pandas as pd
+import joblib
+from datetime import timedelta
 import json
 
-def load_model_and_predict(sample_file, days=7):
-    model_directory = "allmodels"
-    sample_file = str(sample_file) + ".pkl"
-
+def load_model_and_predict(model_name, days=1):
+    model_path = f'allmodels/{model_name}.pkl'
+    
     try:
-        model_file = os.path.join(model_directory, sample_file)
+        dataset = pd.read_csv(f'./DB_csv/unadjusted_amarstock/{model_name}.csv')
+
+        if 'adj_close' not in dataset.columns or len(dataset) < 15:
+            raise ValueError("The dataset must contain at least 15 adj_close values for prediction.")
         
-        if not os.path.exists(model_file):
-            raise FileNotFoundError(f"Model file '{model_file}' not found.")
+        last_values = dataset['adj_close'].tail(60).values
         
-        with open(model_file, 'rb') as f:
-            gb = pickle.load(f)
+        if len(last_values) < 60:
+            last_values = dataset['adj_close'].tail(30).values
+            if len(last_values) < 30:
+                last_values = dataset['adj_close'].tail(15).values
         
-        print(f"Model loaded from {model_file}")
+        try:
+            model = joblib.load(model_path)
+        except Exception as e:
+            raise ValueError(f"Error loading model: {e}")
         
-        csv_directory = "./DB_csv/unadjusted_amarstock/"
-        data_file = os.path.join(csv_directory, sample_file.replace('.pkl', '.csv'))
-        
-        if not os.path.exists(data_file):
-            raise FileNotFoundError(f"Data file '{data_file}' not found.")
-        
-        df = pd.read_csv(data_file)
+        predictions = []
 
-        required_columns = ['timestamp', 'opening', 'high', 'low', 'volume', 'adj_close']
-        for column in required_columns:
-            if column not in df.columns:
-                raise ValueError(f"Required column '{column}' is missing from the dataset.")
-
-        # Compute missing columns if necessary
-        df['timestamp'] = pd.to_datetime(df['timestamp'])
-        df['day_of_year'] = df['timestamp'].dt.dayofyear
-        df['year'] = df['timestamp'].dt.year
-        df['lag1'] = df['adj_close'].shift(1)
-        df['lag2'] = df['adj_close'].shift(2)
-        df['rolling_mean'] = df['adj_close'].rolling(window=5).mean()
-        df['rolling_std'] = df['adj_close'].rolling(window=5).std()
-        df = df.dropna()
-
-        if df.empty:
-            raise ValueError("The dataset is empty. Cannot proceed with prediction.")
-
-        last_known_day = df['day_of_year'].iloc[-1]
-        last_known_year = df['year'].iloc[-1]
-        last_row = df.iloc[-1][['opening', 'high', 'low', 'volume', 'lag1', 'lag2', 'rolling_mean', 'rolling_std']].values
-
-        future_predictions = []
-        future_dates = []
-        for day in range(1, days + 1):
-            next_day_of_year = (last_known_day + day) % 365
-            next_year = last_known_year + (last_known_day + day) // 365
-
-            input_features = np.array([*last_row, next_day_of_year, next_year])
-            if input_features.shape[0] != gb.n_features_in_:
-                raise ValueError(f"Feature count mismatch: Model expects {gb.n_features_in_} features, but got {input_features.shape[0]}.")
-
-            prediction = gb.predict([input_features])[0]
-            future_predictions.append(prediction)
+        for i in range(days):
+            try:
+                next_value = model.predict([last_values[-3:]])[0]
+            except Exception as e:
+                raise ValueError(f"Error during prediction: {e}")
             
-            # Calculate future date
-            last_date = df['timestamp'].iloc[-1]
-            future_date = last_date + pd.DateOffset(days=day)
-            future_dates.append(future_date.strftime('%Y-%m-%d'))
+            predictions.append(next_value)
+            
+            last_values = np.append(last_values, next_value)[-60:]  # Keep only the last 60 values
 
-        predictions_dict = dict(zip(future_dates, future_predictions))
-        
-        predictions_json = json.dumps(predictions_dict, indent=4)
-        
-        print(f"Predicted adj_close prices for the next {days} days:")
-        print(predictions_json)
+        last_date = pd.to_datetime(dataset['timestamp'].iloc[-1])
+        prediction_dates = [last_date + timedelta(days=i+1) for i in range(days)]
 
-        return predictions_json
+        percentage_changes = [0] + [
+            ((predictions[j] - predictions[j-1]) / predictions[j-1]) * 100 for j in range(1, len(predictions))
+        ]
 
-    except FileNotFoundError as fnf_error:
-        print(f"Error: {fnf_error}")
-    except ValueError as val_error:
-        print(f"Error: {val_error}")
+        predictions_dict = {
+            date.strftime('%Y-%m-%d'): {
+                'predicted_value': format(pred, '.12f'),  # Maintain 12 decimal places
+                'percentage_change': format(change, '.12f')  # Maintain 12 decimal places
+            }
+            for date, pred, change in zip(prediction_dates, predictions, percentage_changes)
+        }
+
+        print(json.dumps(predictions_dict, indent=4))
+        return json.dumps(predictions_dict)
+
+    except FileNotFoundError as e:
+        return json.dumps({"error": f"File not found: {e}"})
+    except joblib.externals.loky.process_executor._RemoteTraceback as e:
+        return json.dumps({"error": f"Model loading error: {e}"})
     except Exception as e:
-        print(f"An unexpected error occurred: {e}")
+        return json.dumps({"error": str(e)})
+
+# model_name = 'PTL'
+# days = 7
+# load_model_and_predict(model_name, days)

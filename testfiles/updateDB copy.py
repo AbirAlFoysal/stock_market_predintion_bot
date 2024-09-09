@@ -6,7 +6,7 @@ import sys
 import inspect
 from datetime import datetime
 from rich import print_json
-from colorama import init as colorama_init
+from colorama import init as colorama_init 
 from colorama import Fore
 
 colorama_init(autoreset=True)
@@ -133,7 +133,7 @@ def amar_stock_api():
                         'to': "",
                         'records': 0,
                     })
-    except:
+    except: 
         Exception_Handler(sys.exc_info())
         print()
 

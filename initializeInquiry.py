@@ -2,7 +2,7 @@ import os
 import pandas as pd
 from tqdm import tqdm
 
-directory = r'D:\AbleAid\StockPradiction\DB_csv\unadjusted_amarstock' 
+directory = './DB_csv/unadjusted_amarstock' 
 
 data = []
 

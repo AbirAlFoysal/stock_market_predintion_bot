@@ -60,14 +60,45 @@ def delete_csv_file(file_path):
 import os
 import pandas as pd
 
+# def append_or_create_csv(file1, file2):
+#     if os.path.exists(file1):
+#         df1 = pd.read_csv(file1)
+        
+#         df2 = pd.read_csv(file2)
+        
+#         combined_df = pd.concat([df1, df2], ignore_index=True)
+        
+#         combined_df.to_csv(file1, index=False)
+#         print(f"Appended '{file2}' to '{file1}' successfully.")
+#     else:
+#         df2 = pd.read_csv(file2)
+#         df2.to_csv(file1, index=False)
+#         print(f"'{file1}' not found. Copied '{file2}' as '{file1}'.")
+
+import os
+import pandas as pd
+
 def append_or_create_csv(file1, file2):
     if os.path.exists(file1):
         df1 = pd.read_csv(file1)
-        
         df2 = pd.read_csv(file2)
         
+        # Combine both DataFrames
         combined_df = pd.concat([df1, df2], ignore_index=True)
         
+        # Remove duplicate rows
+        before_deduplication = combined_df.shape[0]
+        combined_df = combined_df.drop_duplicates()
+        after_deduplication = combined_df.shape[0]
+        
+        # Calculate how many rows were deleted
+        rows_deleted = before_deduplication - after_deduplication
+        if rows_deleted > 0:
+            print(f"{rows_deleted} duplicate rows were removed:")
+            duplicates = pd.concat([df1, df2]).duplicated(keep=False)
+            print(pd.concat([df1, df2])[duplicates].drop_duplicates().to_string(index=False))
+
+        # Save the combined DataFrame to the original file
         combined_df.to_csv(file1, index=False)
         print(f"Appended '{file2}' to '{file1}' successfully.")
     else:
@@ -78,7 +109,6 @@ def append_or_create_csv(file1, file2):
 
 
 
-load_inquiry = pd.read_csv("inquiry.csv")
 from  updateInq import *
 
 def generate_time(stock):
@@ -104,6 +134,8 @@ def generate_time(stock):
 
 
 def amar_stock_api():
+    load_inquiry = pd.read_csv("inquiry.csv")
+
     list_of_stocks = [i["Scrip"] for i in requests.get("https://www.amarstock.com/LatestPrice/34267d8d73dd").json()]
 
     if not os.path.isdir(f"./DB_csv"):
@@ -186,7 +218,7 @@ def amar_stock_api():
         Exception_Handler(sys.exc_info())
         print()
 
-load_inquiry.to_csv("inquiry.csv", index=False)
+    load_inquiry.to_csv("inquiry.csv", index=False)
 
 if __name__ == "__main__":
     amar_stock_api()

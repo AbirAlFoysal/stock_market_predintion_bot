@@ -22,8 +22,8 @@
 
         .results-container {
             width: 48%;
-            max-height: 400px; 
-            overflow-y: auto; 
+            max-height: 400px;
+            overflow-y: auto;
         }
 
         #predictionChart {
@@ -83,6 +83,7 @@
                     <tr>
                         <th>Date</th>
                         <th>Adj Close Value</th>
+                        <th>Change (%)</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -93,7 +94,7 @@
     </div>
 
     <script>
-        let predictionChart;
+        let predictionChart = null;
 
         document.getElementById('predictForm').addEventListener('submit', function(event) {
             event.preventDefault();
@@ -104,6 +105,8 @@
             })
             .then(response => response.json())
             .then(data => {
+                console.log("DEBUG: Received data:", data);  // Debugging line
+
                 if (data.error) {
                     alert(`Error: ${data.error}`);
                     return;
@@ -111,17 +114,21 @@
 
                 const ctx = document.getElementById('predictionChart').getContext('2d');
 
-                if (predictionChart) {
+                if (predictionChart !== null && typeof predictionChart.destroy === 'function') {
                     predictionChart.destroy();
                 }
+
+                const labels = data.dates;
+                const values = data.values.map(entry => parseFloat(entry.predicted_value));
+                const changes = data.values.map(entry => parseFloat(entry.percentage_change));
 
                 predictionChart = new Chart(ctx, {
                     type: 'line',
                     data: {
-                        labels: data.dates,
+                        labels: labels,
                         datasets: [{
                             label: 'Predicted Adj Close',
-                            data: data.values,
+                            data: values,
                             borderColor: 'rgba(75, 192, 192, 1)',
                             borderWidth: 2,
                             fill: false
@@ -145,15 +152,16 @@
                     }
                 });
 
-                // Populate the results table
                 const resultsTable = document.getElementById('resultsTable').getElementsByTagName('tbody')[0];
                 resultsTable.innerHTML = ''; // Clear previous results
-                for (let i = 0; i < data.dates.length; i++) {
+                for (let i = 0; i < labels.length; i++) {
                     const row = resultsTable.insertRow();
                     const cellDate = row.insertCell(0);
                     const cellValue = row.insertCell(1);
-                    cellDate.textContent = data.dates[i];
-                    cellValue.textContent = data.values[i].toFixed(2); // format to 2 decimal places
+                    const cellChange = row.insertCell(2);
+                    cellDate.textContent = labels[i];
+                    cellValue.textContent = values[i].toFixed(12);  // Maintain up to 12 decimal places
+                    cellChange.textContent = `${changes[i].toFixed(2)}%`;  // Keep percentage changes at 2 decimal places
                 }
             })
             .catch(error => console.error('Error:', error));
